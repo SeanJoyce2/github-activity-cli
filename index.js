@@ -2,34 +2,36 @@ const EVENTS = {
     PUSH: "PushEvent"
 }
 
-function getRepositories(events) {
-    const repositories = new Set()
+function getMappedEvents(events) {
+    const mappedEvents = new Map();
     for (let event of events) {
-        repositories.add(event.repo.name)
-    }
-    return repositories
-}
+        const repoName = event.repo.name
+        if (mappedEvents.has(repoName)) {
+            mappedEvents.get(repoName).push(event);
+        } else {
+            mappedEvents.set(repoName, [event]);
+        }
 
-function getPushCommits(events, repo) {
-    const pushEvents = events.filter(repo => repo.type === EVENTS.PUSH)
-    console.log(`Pushed ${pushEvents.length} commits to ${repo}`)
-}
-
-function getRepoEvents(repository,events) {
-    for (let repo of repository) {
-        const repoEvents = events.filter(event => event.repo.name === repo)
-       getPushCommits(repoEvents, repo)
     }
+    return mappedEvents
 }
 
 async function main() {
     const [username] = process.argv.splice(2)
 
-    const response = await fetch(`https://api.github.com/users/${username}/events`)
-    const events = await response.json()
-    const repositories = getRepositories(events)
+    try {
+        const response = await fetch(`https://api.github.com/users/${username}/events`)
+        const events = await response.json()
+        const mappedEvents = getMappedEvents(events)
 
-    getRepoEvents(repositories, events)
+        for(const [repository, events] of mappedEvents) {
+            const pushEvents = events.filter(repo => repo.type === EVENTS.PUSH)
+            console.log(`Pushed ${pushEvents.length} commits to ${repository}`)
+        }
+
+    } catch(error) {
+        console.error(error)
+    }
 }
 
 
